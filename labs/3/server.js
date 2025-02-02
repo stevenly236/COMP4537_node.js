@@ -12,7 +12,7 @@ class ServerApp {
     start() {
         const server = http.createServer(this.handleRequest.bind(this));
         server.listen(this.port, () => {
-            console.log(`Server is running on ${this.port}`);
+            console.log(`Server is running ${this.port}`);
         });
     }
 
