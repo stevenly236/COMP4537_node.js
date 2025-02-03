@@ -55,7 +55,7 @@ class ServerApp {
         try {
             const fileContent = await readFile('file.txt');
             res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end(`<pre>${fileContent}</pre>`); // Display file content
+            res.end(`<pre>${fileContent}</pre>`); 
         } catch (err) {
             const notFoundMessage = messages.FILE_NOT_FOUND.replace('%1', 'file.txt');
             res.writeHead(404, { 'Content-Type': 'text/html' });
@@ -73,3 +73,5 @@ const PORT = process.env.PORT || 8080;
 
 const app = new ServerApp(PORT);
 app.start();
+
+// Used ChatGPT to help 
