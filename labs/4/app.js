@@ -1,4 +1,4 @@
-const MESSAGES = require("../lang/messages/en/user.js");
+const MESSAGES = require("./lang/messages/en/user.js");
 
 const http = require("http");
 const url = require("url");
