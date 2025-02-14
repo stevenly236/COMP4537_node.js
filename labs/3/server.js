@@ -17,9 +17,9 @@ class ServerApp {
     }
 
     async handleRequest(req, res) {
-        const parsedUrl = url.parse(req.url); 
+        const parsedUrl = url.parse(req.url, true);
         let pathname = parsedUrl.pathname.replace(/\/+$/, ''); 
-        const query = querystring.parse(parsedUrl.query);
+        const query = parsedUrl.query;
 
         if (pathname === '/COMP4537/labs/3/getDate/' && query.name) {
             this.handleGetDate(query.name, res);
