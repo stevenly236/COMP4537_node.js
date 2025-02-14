@@ -10,7 +10,7 @@ class ServerApp {
     }
 
     start() {
-        const server = http.createServer((req, res) => this.handleRequest(req, res));
+        const server = http.createServer(this.handleRequest.bind(this));
         server.listen(this.port, () => {
             console.log(`Server is running ${this.port}`);
         });
@@ -23,7 +23,7 @@ class ServerApp {
 
         if (pathname === '/COMP4537/labs/3/getDate/' && query.name) {
             this.handleGetDate(query.name, res);
-        } else if (pathname === '/COMP4537/labs/3/writeFile/' && query.text) {
+        } else if (pathname === '/COMP4537/labs/3/writeFile' && query.text) {
             const decodedText = decodeURIComponent(query.text); 
             await this.handleWriteFile(decodedText, res);
         } else if (pathname === '/COMP4537/labs/3/readFile/file.txt') {
