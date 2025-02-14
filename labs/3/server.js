@@ -18,13 +18,14 @@ class ServerApp {
 
     async handleRequest(req, res) {
         const parsedUrl = url.parse(req.url, true);
-        const pathname = parsedUrl.pathname;
+        let pathname = parsedUrl.pathname.replace(/\/+$/, ''); 
         const query = parsedUrl.query;
 
         if (pathname === '/COMP4537/labs/3/getDate/' && query.name) {
             this.handleGetDate(query.name, res);
         } else if (pathname === '/COMP4537/labs/3/writeFile/' && query.text) {
-            await this.handleWriteFile(query.text, res);
+            const decodedText = decodeURIComponent(query.text); 
+            await this.handleWriteFile(decodedText, res);
         } else if (pathname === '/COMP4537/labs/3/readFile/file.txt') {
             await this.handleReadFile(res);
         } else {
