@@ -1,21 +1,21 @@
-require('dotenv').config();
-
 const http = require('http');
 const mysql = require('mysql2/promise');
 const url = require('url');
-const { serverMessages } = require('./lang/messages/en/user.js');
 
 class DatabaseServer {
     constructor() {
         this.dbConfig = {
             host: process.env.DB_HOST,
+            port: process.env.DB_PORT || 25060,
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
             database: process.env.DB_NAME,
-            port: process.env.DB_PORT || 25060,
             ssl: {
                 rejectUnauthorized: true
-            }
+            },
+            connectTimeout: 60000,
+            waitForConnections: true,
+            connectionLimit: 10
         };
         
         this.sampleData = [
@@ -27,33 +27,28 @@ class DatabaseServer {
     }
 
     async initializeDatabase() {
-        const connection = await mysql.createConnection({
-            ...this.dbConfig,
-            multipleStatements: true
-        });
-
         try {
+            console.log('Attempting to connect to database...');
+            const connection = await mysql.createConnection(this.dbConfig);
+            
             await connection.query(`
-                CREATE DATABASE IF NOT EXISTS patient_db;
-                USE patient_db;
                 CREATE TABLE IF NOT EXISTS patient (
                     patientid INT(11) AUTO_INCREMENT PRIMARY KEY,
                     name VARCHAR(100),
                     dateOfBirth DATETIME
                 ) ENGINE=InnoDB;
             `);
-            console.log(serverMessages.SUCCESS_DB_INIT);
-        } catch (error) {
-            console.error(`${serverMessages.ERROR_DB_INIT} ${error.message}`);
-        } finally {
+
             await connection.end();
+            console.log('Database initialized successfully');
+        } catch (error) {
+            console.error('Database initialization error:', error);
+            throw error;
         }
     }
 
     async handleRequest(req, res) {
-        const parsedUrl = url.parse(req.url, true);
-        
-        res.setHeader('Access-Control-Allow-Origin', 'http://your-client-url:8080');
+        res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8080');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -63,24 +58,31 @@ class DatabaseServer {
             return;
         }
 
+        const parsedUrl = url.parse(req.url, true);
+
         try {
-            if (parsedUrl.pathname === '/insert' && req.method === 'POST') {
-                await this.handleInsertSampleData(req, res);
-            } else if (parsedUrl.pathname === '/query') {
-                if (req.method === 'GET') {
-                    await this.handleQuery(parsedUrl.query.query, res);
-                } else if (req.method === 'POST') {
-                    await this.handlePostQuery(req, res);
-                }
-            } else {
-                this.sendResponse(res, 404, { error: serverMessages.ERROR_NOT_FOUND });
+            switch(parsedUrl.pathname) {
+                case '/insert':
+                    if (req.method === 'POST') {
+                        await this.handleInsertSampleData(res);
+                    }
+                    break;
+                case '/query':
+                    if (req.method === 'GET') {
+                        await this.handleQuery(parsedUrl.query.query, res);
+                    } else if (req.method === 'POST') {
+                        await this.handlePostQuery(req, res);
+                    }
+                    break;
+                default:
+                    this.sendResponse(res, 404, { error: 'Not found' });
             }
         } catch (error) {
             this.sendResponse(res, 500, { error: error.message });
         }
     }
 
-    async handleInsertSampleData(req, res) {
+    async handleInsertSampleData(res) {
         const connection = await mysql.createConnection(this.dbConfig);
         try {
             const values = this.sampleData.map(([name, dob]) => [name, dob]);
@@ -88,9 +90,9 @@ class DatabaseServer {
                 'INSERT INTO patient (name, dateOfBirth) VALUES ?',
                 [values]
             );
-            this.sendResponse(res, 200, { message: serverMessages.SUCCESS_INSERT });
+            this.sendResponse(res, 200, { message: 'Sample data inserted successfully' });
         } catch (error) {
-            this.sendResponse(res, 500, { error: `${serverMessages.ERROR_QUERY_EXECUTION} ${error.message}` });
+            this.sendResponse(res, 500, { error: error.message });
         } finally {
             await connection.end();
         }
@@ -98,12 +100,12 @@ class DatabaseServer {
 
     async handleQuery(query, res) {
         if (!query) {
-            this.sendResponse(res, 400, { error: serverMessages.ERROR_QUERY_REQUIRED });
+            this.sendResponse(res, 400, { error: 'Query is required' });
             return;
         }
 
         if (!this.isValidQuery(query)) {
-            this.sendResponse(res, 400, { error: serverMessages.ERROR_INVALID_QUERY });
+            this.sendResponse(res, 400, { error: 'Invalid query. Only SELECT and INSERT queries are allowed' });
             return;
         }
 
@@ -112,7 +114,7 @@ class DatabaseServer {
             const [results] = await connection.query(query);
             this.sendResponse(res, 200, { results });
         } catch (error) {
-            this.sendResponse(res, 500, { error: `${serverMessages.ERROR_QUERY_EXECUTION} ${error.message}` });
+            this.sendResponse(res, 500, { error: error.message });
         } finally {
             await connection.end();
         }
@@ -146,15 +148,13 @@ class DatabaseServer {
 
     isValidQuery(query) {
         const upperQuery = query.toUpperCase().trim();
+        const disallowedKeywords = ['DROP', 'DELETE', 'UPDATE', 'TRUNCATE', 'ALTER'];
+        
         if (upperQuery.startsWith('SELECT')) {
-            return !upperQuery.includes('DROP') && 
-                   !upperQuery.includes('DELETE') && 
-                   !upperQuery.includes('UPDATE');
+            return !disallowedKeywords.some(keyword => upperQuery.includes(keyword));
         }
-        if (upperQuery.startsWith('INSERT')) {
-            return !upperQuery.includes('DROP') && 
-                   !upperQuery.includes('DELETE') && 
-                   !upperQuery.includes('UPDATE');
+        if (upperQuery.startsWith('INSERT INTO patient')) {
+            return !disallowedKeywords.some(keyword => upperQuery.includes(keyword));
         }
         return false;
     }
@@ -166,7 +166,12 @@ class DatabaseServer {
 }
 
 const server = new DatabaseServer();
-server.initializeDatabase().then(() => {
-    http.createServer((req, res) => server.handleRequest(req, res))
-        .listen(3000, () => console.log(`${serverMessages.SUCCESS_SERVER_START} 3000`));
-});
+server.initializeDatabase()
+    .then(() => {
+        http.createServer((req, res) => server.handleRequest(req, res))
+            .listen(3000, () => console.log('Server running on port 3000'));
+    })
+    .catch(error => {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    });
