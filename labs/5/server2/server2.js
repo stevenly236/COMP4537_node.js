@@ -11,7 +11,7 @@ class DatabaseServer {
             password: process.env.DB_PASSWORD,
             database: process.env.DB_NAME,
             ssl: {
-                rejectUnauthorized: true
+                rejectUnauthorized: false
             },
             connectTimeout: 60000,
             waitForConnections: true,
