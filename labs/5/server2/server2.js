@@ -1,6 +1,7 @@
 const http = require('http');
 const mysql = require('mysql2/promise');
 const url = require('url');
+require('dotenv').config();
 
 class DatabaseServer {
     constructor() {
@@ -11,7 +12,7 @@ class DatabaseServer {
             password: process.env.DB_PASSWORD,
             database: process.env.DB_NAME,
             ssl: {
-                rejectUnauthorized: false
+                rejectUnauthorized: true
             },
             connectTimeout: 60000,
             waitForConnections: true,
@@ -87,7 +88,7 @@ class DatabaseServer {
         try {
             const values = this.sampleData.map(([name, dob]) => [name, dob]);
             await connection.query(
-                'INSERT INTO patient (name, dateOfBirth) VALUES ?',
+                'INSERT INTO patient (name, dateOfBirth) VALUES ?', 
                 [values]
             );
             this.sendResponse(res, 200, { message: 'Sample data inserted successfully' });
