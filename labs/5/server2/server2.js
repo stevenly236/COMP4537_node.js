@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const http = require('http');
 const mysql = require('mysql2/promise');
 const url = require('url');
@@ -6,10 +8,13 @@ const { serverMessages } = require('./lang/messages/en/user.js');
 class DatabaseServer {
     constructor() {
         this.dbConfig = {
-            host: 'localhost',
-            user: 'your_username',
-            password: 'your_password',
-            database: 'patient_db'
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: process_params.env.DB_NAME,
+            ssl: {
+                rejectUnauthorized: false
+            }
         };
         
         this.sampleData = [
