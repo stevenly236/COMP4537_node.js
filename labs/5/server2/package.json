@@ -1,7 +1,6 @@
 {
   "name": "server2",
   "version": "1.0.0",
-  "description": "",
   "main": "server2.js",
   "scripts": {
     "start": "node server2.js",
@@ -9,5 +8,10 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "mysql2": "^3.12.0"
+  }
 }
