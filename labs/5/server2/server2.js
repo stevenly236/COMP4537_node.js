@@ -86,11 +86,14 @@ class DatabaseServer {
     async handleInsertSampleData(res) {
         const connection = await mysql.createConnection(this.dbConfig);
         try {
+            await this.ensureTableExists(connection);
+    
             const values = this.sampleData.map(([name, dob]) => [name, dob]);
             await connection.query(
                 'INSERT INTO patient (name, dateOfBirth) VALUES ?', 
                 [values]
             );
+    
             this.sendResponse(res, 200, { message: 'Sample data inserted successfully' });
         } catch (error) {
             this.sendResponse(res, 500, { error: error.message });
@@ -98,20 +101,23 @@ class DatabaseServer {
             await connection.end();
         }
     }
+    
 
     async handleQuery(query, res) {
         if (!query) {
             this.sendResponse(res, 400, { error: 'Query is required' });
             return;
         }
-
+    
         if (!this.isValidQuery(query)) {
             this.sendResponse(res, 400, { error: 'Invalid query. Only SELECT and INSERT queries are allowed' });
             return;
         }
-
+    
         const connection = await mysql.createConnection(this.dbConfig);
         try {
+            await this.ensureTableExists(connection);
+    
             const [results] = await connection.query(query);
             this.sendResponse(res, 200, { results });
         } catch (error) {
@@ -120,6 +126,7 @@ class DatabaseServer {
             await connection.end();
         }
     }
+    
 
     async handlePostQuery(req, res) {
         let body = '';
@@ -159,6 +166,17 @@ class DatabaseServer {
         }
         return false;
     }
+
+    async ensureTableExists(connection) {
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS patient (
+                patientid INT(11) AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100),
+                dateOfBirth DATETIME
+            ) ENGINE=InnoDB;
+        `);
+    }
+    
 
     sendResponse(res, statusCode, data) {
         res.writeHead(statusCode, { 'Content-Type': 'application/json' });
