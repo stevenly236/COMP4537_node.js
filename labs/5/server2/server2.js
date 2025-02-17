@@ -62,7 +62,7 @@ class DatabaseServer {
         const parsedUrl = url.parse(req.url, true);
 
         try {
-            switch(parsedUrl.pathname) {
+            switch(parsedUrl.pathname.replace(/\/+$/, '')) {
                 case '/insert':
                     if (req.method === 'POST') {
                         await this.handleInsertSampleData(res);
